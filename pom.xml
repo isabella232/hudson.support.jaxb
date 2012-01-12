@@ -25,6 +25,7 @@
   </parent>
 
   <artifactId>hudson-jaxb</artifactId>
+  <version>3.0.0</version>
   <name>Hudson :: JAXB</name>
   <packaging>pom</packaging>
 
