@@ -14,36 +14,35 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
 import com.sun.codemodel.JAnnotationUse;
-import com.sun.codemodel.JDefinedClass;
+import com.sun.codemodel.JFieldVar;
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.outline.ClassOutline;
-import com.sun.tools.xjc.outline.EnumOutline;
+import com.sun.tools.xjc.outline.FieldOutline;
 import com.sun.tools.xjc.outline.Outline;
-import com.thoughtworks.xstream.annotations.XStreamAlias;
+import org.codehaus.jackson.annotate.JsonProperty;
 import org.jvnet.jaxb2_commons.plugin.AbstractParameterizablePlugin;
-
-import javax.xml.namespace.QName;
+import org.jvnet.jaxb2_commons.util.FieldAccessorUtils;
 
 /**
- * Adds {@link XStreamAlias} to generated types.
+ * Adds {@link JsonProperty} to fields.
  *
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  * @since 2.1.0
  */
-public class XStreamAliasPlugin
+public class JsonPropertyPlugin
     extends AbstractParameterizablePlugin
 {
     @Override
     public String getOptionName() {
-        return "XxstreamAlias";
+        return "XjsonProperty";
     }
 
     @Override
     public String getUsage() {
-        return "Adds @XStreamAlias to generated types.";
+        return "Adds @JsonProperty to fields.";
     }
 
     @Override
@@ -52,26 +51,25 @@ public class XStreamAliasPlugin
         assert options != null;
 
         for (ClassOutline type : outline.getClasses()) {
-            QName qname = type.target.getTypeName();
-            if (qname != null) {
-                addAlias(type.implClass, qname);
-            }
-        }
-
-        for (EnumOutline type : outline.getEnums()) {
-            QName qname = type.target.getTypeName();
-            if (qname != null) {
-                addAlias(type.clazz, qname);
-            }
+            processClassOutline(type);
         }
 
         return true;
     }
 
-    private void addAlias(final JDefinedClass type, final QName qname) {
-        assert type != null;
-        assert qname != null;
-        JAnnotationUse anno = type.annotate(XStreamAlias.class);
-        anno.param("value", qname.getLocalPart());
+    private void processClassOutline(final ClassOutline outline) {
+        assert outline != null;
+
+        for (FieldOutline field : outline.getDeclaredFields()) {
+            processFieldOutline(field);
+        }
+    }
+
+    private void processFieldOutline(final FieldOutline outline) {
+        assert outline != null;
+
+        JFieldVar field = FieldAccessorUtils.field(outline);
+        JAnnotationUse anno = field.annotate(JsonProperty.class);
+        anno.param("value", field.name());
     }
 }

@@ -14,35 +14,40 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
 import com.sun.codemodel.JAnnotationUse;
-import com.sun.codemodel.JFieldVar;
+import com.sun.codemodel.JDefinedClass;
+import com.sun.tools.xjc.Driver;
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.outline.ClassOutline;
-import com.sun.tools.xjc.outline.FieldOutline;
+import com.sun.tools.xjc.outline.EnumOutline;
 import com.sun.tools.xjc.outline.Outline;
-import org.codehaus.jackson.annotate.JsonProperty;
 import org.jvnet.jaxb2_commons.plugin.AbstractParameterizablePlugin;
-import org.jvnet.jaxb2_commons.util.FieldAccessorUtils;
+
+import javax.annotation.Generated;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
- * Adds {@link JsonProperty} to fields.
+ * Adds {@link Generated} to generated types.
  *
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  * @since 2.1.0
  */
-public class JsonPropertyPlugin
+public class GeneratedPlugin
     extends AbstractParameterizablePlugin
 {
+    public static final String ISO_8601_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
+
     @Override
     public String getOptionName() {
-        return "XjsonProperty";
+        return "Xgenerated";
     }
 
     @Override
     public String getUsage() {
-        return "Adds @JsonProperty to fields.";
+        return "Adds @Generated to generated types.";
     }
 
     @Override
@@ -51,25 +56,26 @@ public class JsonPropertyPlugin
         assert options != null;
 
         for (ClassOutline type : outline.getClasses()) {
-            processClassOutline(type);
+            addGenerated(type.implClass);
+        }
+
+        for (EnumOutline type : outline.getEnums()) {
+            addGenerated(type.clazz);
         }
 
         return true;
     }
 
-    private void processClassOutline(final ClassOutline outline) {
-        assert outline != null;
+    private void addGenerated(final JDefinedClass type) {
+        assert type != null;
 
-        for (FieldOutline field : outline.getDeclaredFields()) {
-            processFieldOutline(field);
-        }
-    }
+        JAnnotationUse anno = type.annotate(Generated.class);
+        anno.param("value", String.format("XJC %s", Driver.getBuildID()));
 
-    private void processFieldOutline(final FieldOutline outline) {
-        assert outline != null;
+        Date now = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_FORMAT);
+        anno.param("date", sdf.format(now));
 
-        JFieldVar field = FieldAccessorUtils.field(outline);
-        JAnnotationUse anno = field.annotate(JsonProperty.class);
-        anno.param("value", field.name());
+        // TODO: Maybe support customized comments?
     }
 }

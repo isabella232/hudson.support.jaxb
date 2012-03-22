@@ -14,37 +14,36 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
-import com.sun.codemodel.JBlock;
-import com.sun.codemodel.JCodeModel;
-import com.sun.codemodel.JDefinedClass;
-import com.sun.codemodel.JExpr;
-import com.sun.codemodel.JMethod;
-import com.sun.codemodel.JMod;
-import com.sun.codemodel.JTryBlock;
+import com.sun.codemodel.JAnnotationUse;
+import com.sun.codemodel.JFieldVar;
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.outline.ClassOutline;
+import com.sun.tools.xjc.outline.FieldOutline;
 import com.sun.tools.xjc.outline.Outline;
+import com.sun.xml.bind.v2.model.core.PropertyKind;
+import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 import org.jvnet.jaxb2_commons.plugin.AbstractParameterizablePlugin;
+import org.jvnet.jaxb2_commons.util.FieldAccessorUtils;
 
 /**
- * Adds {@link Cloneable} and {@link Object#clone} implementation to all classes.
+ * Adds {@link XStreamAsAttribute} to XSD attribute fields.
  *
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  * @since 2.1.0
  */
-public class CloneablePlugin
+public class XStreamAsAttributePlugin
     extends AbstractParameterizablePlugin
 {
     @Override
     public String getOptionName() {
-        return "Xcloneable";
+        return "XStreamAsAttribute";
     }
 
     @Override
     public String getUsage() {
-        return "Adds Cloneable and Object.clone() implementation to all classes.";
+        return "Adds @XStreamAsAttribute to XSD attribute fields.";
     }
 
     @Override
@@ -62,16 +61,18 @@ public class CloneablePlugin
     private void processClassOutline(final ClassOutline outline) {
         assert outline != null;
 
-        JDefinedClass type = outline.implClass;
-        JCodeModel model = type.owner();
-        type._implements(model.ref(Cloneable.class));
+        for (FieldOutline field : outline.getDeclaredFields()) {
+            processFieldOutline(field);
+        }
+    }
 
-        JMethod method = type.method(JMod.PUBLIC, outline.implRef, "clone");
-        method.annotate(Override.class);
+    private void processFieldOutline(final FieldOutline outline) {
+        assert outline != null;
 
-        JBlock body = method.body();
-        JTryBlock block = body._try();
-        block.body()._return(JExpr.cast(outline.implRef, JExpr._super().invoke("clone")));
-        block._catch(model.ref(CloneNotSupportedException.class)).body()._throw(JExpr._new(model.ref(InternalError.class)));
+        PropertyKind kind = outline.getPropertyInfo().kind();
+        if (kind == PropertyKind.ATTRIBUTE) {
+            JFieldVar field = FieldAccessorUtils.field(outline);
+            JAnnotationUse anno = field.annotate(XStreamAsAttribute.class);
+        }
     }
 }

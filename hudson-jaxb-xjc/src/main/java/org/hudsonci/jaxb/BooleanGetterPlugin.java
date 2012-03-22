@@ -14,36 +14,33 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
-import com.sun.codemodel.JAnnotationUse;
-import com.sun.codemodel.JFieldVar;
+import com.sun.codemodel.JMethod;
+import com.sun.codemodel.JType;
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.outline.ClassOutline;
-import com.sun.tools.xjc.outline.FieldOutline;
 import com.sun.tools.xjc.outline.Outline;
-import com.sun.xml.bind.v2.model.core.PropertyKind;
-import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 import org.jvnet.jaxb2_commons.plugin.AbstractParameterizablePlugin;
-import org.jvnet.jaxb2_commons.util.FieldAccessorUtils;
 
 /**
- * Adds {@link XStreamAsAttribute} to XSD attribute fields.
+ * Replaces any <tt>isXXX()</tt> method with <tt>getXXX()</tt> where the return type is {@link Boolean}.
+ * Methods with primitive <tt>boolean</tt> are left as-is.
  *
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  * @since 2.1.0
  */
-public class XStreamAsAttributePlugin
+public class BooleanGetterPlugin
     extends AbstractParameterizablePlugin
 {
     @Override
     public String getOptionName() {
-        return "XStreamAsAttribute";
+        return "XbooleanGetter";
     }
 
     @Override
     public String getUsage() {
-        return "Adds @XStreamAsAttribute to XSD attribute fields.";
+        return "Replaces isXXX() methods with getXXX() for getters of type java.lang.Boolean.";
     }
 
     @Override
@@ -52,27 +49,16 @@ public class XStreamAsAttributePlugin
         assert options != null;
 
         for (ClassOutline type : outline.getClasses()) {
-            processClassOutline(type);
+            for (JMethod method : type.implClass.methods()) {
+                if (method.name().startsWith("is") && method.listParams().length == 0) {
+                    JType rtype = method.type();
+                    if (rtype.fullName().equals(Boolean.class.getName())) {
+                        method.name("get" + method.name().substring(2));
+                    }
+                }
+            }
         }
 
         return true;
-    }
-
-    private void processClassOutline(final ClassOutline outline) {
-        assert outline != null;
-
-        for (FieldOutline field : outline.getDeclaredFields()) {
-            processFieldOutline(field);
-        }
-    }
-
-    private void processFieldOutline(final FieldOutline outline) {
-        assert outline != null;
-
-        PropertyKind kind = outline.getPropertyInfo().kind();
-        if (kind == PropertyKind.ATTRIBUTE) {
-            JFieldVar field = FieldAccessorUtils.field(outline);
-            JAnnotationUse anno = field.annotate(XStreamAsAttribute.class);
-        }
     }
 }

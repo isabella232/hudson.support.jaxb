@@ -14,7 +14,7 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
 import com.sun.codemodel.JMethod;
 import com.sun.tools.xjc.outline.ClassOutline;

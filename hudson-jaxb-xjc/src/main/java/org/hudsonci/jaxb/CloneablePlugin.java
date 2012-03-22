@@ -14,33 +14,37 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
+import com.sun.codemodel.JBlock;
+import com.sun.codemodel.JCodeModel;
+import com.sun.codemodel.JDefinedClass;
+import com.sun.codemodel.JExpr;
 import com.sun.codemodel.JMethod;
-import com.sun.codemodel.JType;
+import com.sun.codemodel.JMod;
+import com.sun.codemodel.JTryBlock;
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.outline.ClassOutline;
 import com.sun.tools.xjc.outline.Outline;
 import org.jvnet.jaxb2_commons.plugin.AbstractParameterizablePlugin;
 
 /**
- * Replaces any <tt>isXXX()</tt> method with <tt>getXXX()</tt> where the return type is {@link Boolean}.
- * Methods with primitive <tt>boolean</tt> are left as-is.
+ * Adds {@link Cloneable} and {@link Object#clone} implementation to all classes.
  *
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  * @since 2.1.0
  */
-public class BooleanGetterPlugin
+public class CloneablePlugin
     extends AbstractParameterizablePlugin
 {
     @Override
     public String getOptionName() {
-        return "XbooleanGetter";
+        return "Xcloneable";
     }
 
     @Override
     public String getUsage() {
-        return "Replaces isXXX() methods with getXXX() for getters of type java.lang.Boolean.";
+        return "Adds Cloneable and Object.clone() implementation to all classes.";
     }
 
     @Override
@@ -49,16 +53,25 @@ public class BooleanGetterPlugin
         assert options != null;
 
         for (ClassOutline type : outline.getClasses()) {
-            for (JMethod method : type.implClass.methods()) {
-                if (method.name().startsWith("is") && method.listParams().length == 0) {
-                    JType rtype = method.type();
-                    if (rtype.fullName().equals(Boolean.class.getName())) {
-                        method.name("get" + method.name().substring(2));
-                    }
-                }
-            }
+            processClassOutline(type);
         }
 
         return true;
+    }
+
+    private void processClassOutline(final ClassOutline outline) {
+        assert outline != null;
+
+        JDefinedClass type = outline.implClass;
+        JCodeModel model = type.owner();
+        type._implements(model.ref(Cloneable.class));
+
+        JMethod method = type.method(JMod.PUBLIC, outline.implRef, "clone");
+        method.annotate(Override.class);
+
+        JBlock body = method.body();
+        JTryBlock block = body._try();
+        block.body()._return(JExpr.cast(outline.implRef, JExpr._super().invoke("clone")));
+        block._catch(model.ref(CloneNotSupportedException.class)).body()._throw(JExpr._new(model.ref(InternalError.class)));
     }
 }

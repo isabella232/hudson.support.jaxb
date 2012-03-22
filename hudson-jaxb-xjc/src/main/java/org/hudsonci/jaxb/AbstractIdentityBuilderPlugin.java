@@ -14,7 +14,7 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.model.CPluginCustomization;

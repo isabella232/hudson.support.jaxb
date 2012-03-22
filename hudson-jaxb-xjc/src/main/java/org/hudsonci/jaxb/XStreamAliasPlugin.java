@@ -14,40 +14,36 @@
  *
  *******************************************************************************/ 
 
-package org.eclipse.hudson.jaxb;
+package org.hudsonci.jaxb;
 
 import com.sun.codemodel.JAnnotationUse;
 import com.sun.codemodel.JDefinedClass;
-import com.sun.tools.xjc.Driver;
 import com.sun.tools.xjc.Options;
 import com.sun.tools.xjc.outline.ClassOutline;
 import com.sun.tools.xjc.outline.EnumOutline;
 import com.sun.tools.xjc.outline.Outline;
+import com.thoughtworks.xstream.annotations.XStreamAlias;
 import org.jvnet.jaxb2_commons.plugin.AbstractParameterizablePlugin;
 
-import javax.annotation.Generated;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import javax.xml.namespace.QName;
 
 /**
- * Adds {@link Generated} to generated types.
+ * Adds {@link XStreamAlias} to generated types.
  *
  * @author <a href="mailto:jason@planet57.com">Jason Dillon</a>
  * @since 2.1.0
  */
-public class GeneratedPlugin
+public class XStreamAliasPlugin
     extends AbstractParameterizablePlugin
 {
-    public static final String ISO_8601_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
-
     @Override
     public String getOptionName() {
-        return "Xgenerated";
+        return "XxstreamAlias";
     }
 
     @Override
     public String getUsage() {
-        return "Adds @Generated to generated types.";
+        return "Adds @XStreamAlias to generated types.";
     }
 
     @Override
@@ -56,26 +52,26 @@ public class GeneratedPlugin
         assert options != null;
 
         for (ClassOutline type : outline.getClasses()) {
-            addGenerated(type.implClass);
+            QName qname = type.target.getTypeName();
+            if (qname != null) {
+                addAlias(type.implClass, qname);
+            }
         }
 
         for (EnumOutline type : outline.getEnums()) {
-            addGenerated(type.clazz);
+            QName qname = type.target.getTypeName();
+            if (qname != null) {
+                addAlias(type.clazz, qname);
+            }
         }
 
         return true;
     }
 
-    private void addGenerated(final JDefinedClass type) {
+    private void addAlias(final JDefinedClass type, final QName qname) {
         assert type != null;
-
-        JAnnotationUse anno = type.annotate(Generated.class);
-        anno.param("value", String.format("XJC %s", Driver.getBuildID()));
-
-        Date now = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_FORMAT);
-        anno.param("date", sdf.format(now));
-
-        // TODO: Maybe support customized comments?
+        assert qname != null;
+        JAnnotationUse anno = type.annotate(XStreamAlias.class);
+        anno.param("value", qname.getLocalPart());
     }
 }
